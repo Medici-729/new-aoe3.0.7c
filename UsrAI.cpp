@@ -161,9 +161,126 @@ static void cutTree(tagInfo& info,int num,int resourceType) {
             if(currentCount>=targetCount) break;
         }
 }
-//打猎
-static void hunting(tagInfo& info;int num;int animaltype){
+//打猎：羚羊
+static void hunting(tagInfo& info){
+    static vector<int> huntTasks; 
+    if ((int)huntTasks.size()!= (int)info.farmers.size()) {
+        huntTasks.assign(info.farmers.size(), -1);
+    }
+    for (auto i = 0; i < info.farmers.size(); i++) {
+        tagFarmer& f = info.farmers[i];
+        if (huntTasks[i] == -1) continue;
+        if (f.Blood <= 0 || f.NowState == HUMAN_STATE_IDLE) {
+            huntTasks[i] = -1;
+            continue;
+        }
+        bool exists = false;
+        for (tagResource& r : info.resources) {
+            if (r.SN == huntTasks[i] && r.Type == RESOURCE_GAZELLE && 
+                (r.Blood > 0 || r.Cnt > 0)) {
+                exists = true;
+                break;
+            }
+        }
+        if (exists==false) huntTasks[i] = -1;
+    }
+    vector<tagResource*> gazelles;
+    for (tagResource& r : info.resources) {
+        if (r.Type == RESOURCE_GAZELLE && (r.Blood > 0 || r.Cnt > 0)) {
+            gazelles.push_back(&r);
+        }
+    }
+    if (gazelles.empty()) {
+        for (auto i = 0; i < info.farmers.size(); i++) {
+            huntTasks[i] = -1;
+        }
+        return;
+    }
+    int currentCount = 0;
+    for (auto i = 0; i < info.farmers.size(); i++) {
+        if (huntTasks[i] != -1) currentCount++;
+    }
+    int targetCount = 2;
+    if (currentCount >= targetCount) return;
+    tagResource* target = nullptr;
+    vector<int> lockedSNs;
+    for (auto i = 0; i < info.farmers.size(); i++) {
+        if (huntTasks[i] != -1) {
+            lockedSNs.push_back(huntTasks[i]);
+        }
+    }
+    for (tagResource* g : gazelles) {
+        bool isLocked = false;
+        for (int sn : lockedSNs) {
+            if (sn == g->SN) { isLocked = true; break; }
+        }
+        if (!isLocked) {
+            target = g;
+            break;
+        }
+    }
+    if (target == nullptr && !gazelles.empty()) {
+        target = gazelles[0];
+    }
+    if (target == nullptr) return;
+    int assigned = 0;
+    for (auto i = 0; i < info.farmers.size() && assigned < 2; i++) {
+         tagFarmer& f = info.farmers[i];
+        if (f.FarmerSort != FARMERTYPE_FARMER) continue;
+        if (f.Blood <= 0) continue;
+        if (f.NowState != HUMAN_STATE_IDLE) continue;
+        if (huntTasks[i] != -1) continue
+        HumanAction(f.SN, target->SN);
+        huntTasks[i] = target->SN;
+        assigned++;
+    }
+}
+//建筑：市镇中心，谷仓，市场，兵营、靶场 、马厩
+static void manageBuildings(const tagInfo& info) {
+    // ============================================================
+    // 第一步：收集信息（查找关键建筑SN，统计数量）
+    // ============================================================
+    // TODO: 遍历 info.buildings，找到各建筑的SN
     
+    // ============================================================
+    // 第二步：市镇中心（造村民 + 升级时代）
+    // ============================================================
+    // TODO: 生产村民 + 升级铜器
+    
+    // ============================================================
+    // 第三步：谷仓（研发箭塔科技）
+    // ============================================================
+    // TODO: 研发 BUILDING_GRANARY_ARROWTOWER
+    
+    // ============================================================
+    // 第四步：市场（研发科技）
+    // ============================================================
+    // TODO: 车轮 → 木材加工 → 驯养动物 → 金矿开采
+    
+    // ============================================================
+    // 第五步：仓库（研发攻防科技）
+    // ============================================================
+    // TODO: 工具使用 → 步兵护甲
+    
+    // ============================================================
+    // 第六步：兵营（训练士兵）
+    // ============================================================
+    // TODO: 棍棒兵 / 阔剑兵
+    
+    // ============================================================
+    // 第七步：靶场（训练弓箭手）
+    // ============================================================
+    // TODO: 弓箭手
+    
+    // ============================================================
+    // 第八步：马厩（训练骑兵）
+    // ============================================================
+    // TODO: 侦察骑兵 / 骑兵
+    
+    // ============================================================
+    // 第九步：学院（训练方阵兵）
+    // ============================================================
+    // TODO: 方阵兵
 }
 
 void UsrAI::processData()
