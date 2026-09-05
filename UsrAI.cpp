@@ -14,6 +14,7 @@ ins UsrIns;
 #define stageDefense1 2
 #define stageDefense2 3
 #define stageAttack 4
+static int stage=1;
 static int terrainCache[MAP_SIZE][MAP_SIZE];
 
 //距离计算函数
@@ -155,22 +156,63 @@ static void hunting(tagInfo& info, int targetCount) {
         if (assigned >= targetCount) break;
     }
 }
-//建筑：市镇中心，谷仓，市场，兵营、靶场 、马厩
+//建筑：市镇中心，谷仓，市场，农田，兵营、靶场 、马厩
 static void buildBuilding(tagInfo& info,int buildingType,int num){
     int size=3;
     if(buildingType==BUILDING_HOME||buildingType==BUILDING_ARROWTOWER) size=2;
     int currentCount=0;
+    int buildDR,buildUR;
+    if(!findEmptyBlock(buildDR,buildUR,size))  return;
     for(tagFarmer& f:info.farmers){
         if(f.FarmerSort!=FARMERTYPE_FARMER) continue;
         if(f.Blood<=0) continue;
         if(f.NowState!=HUMAN_STATE_IDLE) continue;
         currentCount++;
         if(currentCount>num) break;
-        int buildDR,buildUR;
-        if(!findEmptyBlock(buildDR,buildUR,size)) return;
         HumanBuild(f.SN,buildingType,buildDR,buildUR);
      }
 }
+//军队管理
+static void armymanage(tagInfo& info){
+    for(tagArmy& a:info.armies){
+        if(a.sort==AT_PRIEST) continue;
+        if(a.Blood<=0) continue;
+        if(a.NowState!=HUMAN_STATE_IDLE&&a.NowState!=HUMAN_STATE_WALKING) continue;
+        int targetSN=-1;
+        double minDist=1e9;
+        for(tagArmy& enenmy:info.enemy_armies){
+            double d=calDistance(a.DR,a.UR,enemy.DR,enemy.UR);
+            if (d > 15 * BLOCKSIDELENGTH) continue;
+            if (enemy.Sort == AT_CHARIOT_ARCHER || enemy.Sort == AT_COMPOSITE_BOWMAN || enemy.Sort == AT_STONE_THROWER){
+                 targetSN=enemy.SN;
+                 break;  
+           }
+        }
+        if(targetSN==-1&&!info.enemy_armies.empty()){
+            for(tagArmy& enemy:info.enemy_armies){
+                if (d < 15 * BLOCKSIDELENGTH && d < minDist) {
+                    minDist = d;
+                    targetSN = enemy.SN;
+                 }
+            }
+        }
+        if(targetSN=-1&&stage>=stageAttack&&!info.enemy_armies.empty()){
+            for(tagArmy& enemy:info.enemy_armies){
+                double eDR = blockToDetail(enemy.BlockDR);
+                double eUR = blockToDetail(enemy.BlockUR);
+                double d = calDistance(a.DR, a.UR, eDR, eUR);
+                if (d < 20 * BLOCKSIDELENGTH && d < minDist) {
+                    minDist = d;
+                    targetSN = enemy.SN;
+                 }
+            }
+        }
+        if(targetSN!=-1){
+            HumanAction(a.SN,targetSN);
+        }
+    }
+}
+
 
 void UsrAI::processData()
 {    tagInfo info = getInfo();
