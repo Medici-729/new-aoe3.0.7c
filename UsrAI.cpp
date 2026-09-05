@@ -156,12 +156,26 @@ static void hunting(tagInfo& info, int targetCount) {
     }
 }
 //建筑：市镇中心，谷仓，市场，兵营、靶场 、马厩
-
+static void buildBuilding(tagInfo& info,int buildingType,int num){
+    int size=3;
+    if(buildingType==BUILDING_HOME||buildingType==BUILDING_ARROWTOWER) size=2;
+    int currentCount=0;
+    for(tagFarmer& f:info.farmers){
+        if(f.FarmerSort!=FARMERTYPE_FARMER) continue;
+        if(f.Blood<=0) continue;
+        if(f.NowState!=HUMAN_STATE_IDLE) continue;
+        currentCount++;
+        if(currentCount>num) break;
+        int buildDR,buildUR;
+        if(!findEmptyBlock(buildDR,buildUR,size)) return;
+        HumanBuild(f.SN,buildingType,buildDR,buildUR);
+     }
+}
 
 void UsrAI::processData()
 {    tagInfo info = getInfo();
      if (info.GameFrame % 5 != 0) return;
-
+     
 
 
 }
