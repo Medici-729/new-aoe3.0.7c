@@ -9,9 +9,166 @@ using namespace std;
 tagGame tagUsrGame;
 ins UsrIns;
 /*##########DO NOT MODIFY THE CODE ABOVE##########*/
+#define MAP_SIZE 100
+#define stageExplore 1
+#define stageDefense1 2
+#define stageDefense2 3
+#define stageAttack 4
+static int terrainCache[MAP_SIZE][MAP_SIZE];
+
+//距离计算函数
+static double calDistance(double dr1,double ur1,double dr2,double ur2){
+    double ddr=dr1-dr2;
+    double dur=ur1-ur2;
+    return sqrt(ddr*ddr+dur*dur)
+}
+//块坐标转换为细节坐标
+static double blockToDetail(int block) {
+    return block * BLOCKSIDELENGTH + BLOCKSIDELENGTH / 2.0;
+}
+//地图缓存更新
+static void updateTerrainCache(const tagInfo& info) {
+    for (int i=0;i<MAP_SIZE;i++){
+        for(int j=0;j<MAP_SIZE;j++){ terrainCache[i][j]=-1;}// 初始化所有格子为 -1
+    }
+    if(info.theMap!=0){
+        for(int i=0;i<MAP_SIZE;i++){
+            for(int j=0;j<MAP_SIZE;j++){
+        tagTerrain& t=(*info.theMap)[i][j];
+        if(t.type==MAPPATTERN_GRASS&&t.height>=0){terrainCache[i][j]=0;}
+            }
+        }
+    }// 标记空地(0)
+    for(tagBuilding& b:info.buildings){
+        int size = 2;
+        switch (b.Type) {
+            case BUILDING_HOME:      size = 2; break;
+            case BUILDING_ARROWTOWER:size = 2; break;
+            case BUILDING_FARM:      size = 3; break;
+            case BUILDING_CENTER:    size = 3; break;
+            case BUILDING_STOCK:     size = 3; break;
+            case BUILDING_GRANARY:   size = 3; break;
+            case BUILDING_ARMYCAMP:  size = 3; break;
+            case BUILDING_RANGE:     size = 3; break;
+            case BUILDING_STABLE:    size = 3; break;
+            case BUILDING_MARKET:    size = 3; break;
+            case BUILDING_COLLAGE:   size = 3; break;
+            case BUILDING_SIEGE:     size = 3; break;
+            default:                 size = 2; break;
+            }
+        for(int i=b.BlockDR;i<=b.BlockDR+size;i++){
+            for(int j=b.BlockUR;j<=b.BlockUR+size;j++){
+                terrainCache[i][j]=1;
+            }
+        }  
+    }//标记建筑(1)
+    for(tagResource& r:info.resources){
+        if(r.BlockDR>=0&&r.BlockDR<MAP_SIZE&&r.BlockUR>=0&&r.BlockUR<MAP_SIZE)
+        {terrainCache[r.BlockDR][r.BlockUR]=2;}
+        }//标记资源(2)
+    for(tagFarmer& f=info.farmers){
+        if(f.BlockDR>=0&&f.BlockDR<MAP_SIZE&&f.BlockUR>=0&&f.BlockDR<MAP_SIZE){
+         terrainCache[f.BlockDR][f.BlockUR]=3;   
+        }
+     }
+    for(tagArmy& a=info.armies){
+        if(a.BlockDR>=0&&a.BlockDR<MAP_SIZE&&a.BlockUR>=0&&a.BlockDR<MAP_SIZE){
+         terrainCache[a.BlockDR][a.BlockUR]=3;   
+        }
+     }//标记单位(3)
+}
+//找空地
+static bool findEmptyBlock(int& outDR, int& outUR, int size) {
+        for(int i=0;i<MAP_SIZE;i++){
+            for(int j=0;j<MAP_SIZE;j++){
+                if(terrainCache[i][j]==0){
+                 outDR=i;
+                 outUR=j;
+                 return true;
+                }
+            }
+         }
+        return false;
+    }
+//阶段切换
+static void updateStage(tagInfo& info) {
+    int frame=info.GameFrame;
+    if(frame<6000) {
+        stage=stageExplore;
+    } else if(frame<13500) {
+        stage=stageDefense1;
+    } else if(frame<21000) {
+        stage=stageDefense2;
+    } else {
+        stage=stageAttack;
+    }
+}
+//采集：砍树，采浆果，采金矿，挖石头
+static void cutTree(tagInfo& info,int num,int resourceType) {
+    static vector<int> resourcetask;
+    static vector<int> tasktype;
+    if((int)resourcetask.size()!=info.farmers.size()){
+        resourcetask.assign(info.farmer.size(),-1);
+        tasktype.assign(info.farmer.size(),-1);
+    }
+    for (auto i=0;i<info.farmers.size();i++) {
+        tagFarmer& farmer=info.farmers[i];
+        if (resourcetask[i] == -1) continue;
+        if(farmer.Blood<=0||farmer.NowState==HUMAN_STATE_IDLE){
+            resourcetask[i]=-1;
+            tasktype[i]=-1;
+            continue;
+        }
+        bool resourceExist=false;
+        for(tagResource& r:info.resources){
+            if(r.Type==RESOURCE_TYPE&&r.SN=resourcetask[i]&&r.Cnt>0){
+                resourceExist=true;
+                break;
+            }
+        }
+        if(resourceExist==false){
+            resourcetask[i]=-1;
+            tasktype[i]=-1;
+        }
+    }
+    int currentcount=0;
+    for (auto i=0;i<info.farmers.size();i++){
+        if(tasktype[i]==resourceType){currentcount++;}
+    }
+        if(currentcount>=num){return;}
+        for (auto i=0;i<info.farmers.size();i++){
+            tagFarmer& farmer=info.farmers[i];
+            if (farmer.FarmerSort != FARMERTYPE_FARMER) continue;
+            if (farmer.Blood <= 0) continue;
+            if (farmer.NowState != HUMAN_STATE_IDLE) continue;
+            if (resourcetask[i] != -1) continue;
+            //寻找最近的资源
+            int targetSN = -1;
+            double minDist = 1e9;
+            for (const tagResource& r : info.resources) {
+                if (r.Type != resourceType||r.Cnt <= 0) continue;
+                double d = calDistance(f.DR, f.UR, r.DR, r.UR);
+                if (d < minDist) { 
+                    minDist = d; 
+                    targetSN = r.SN; 
+                }
+            }
+            if(targetSN==-1) return;
+            HumanAction(f.SN,targetSN);
+            resourcetask[i]=targetSN;
+            tasktype[i]=resourceType;
+            currentCount++;
+            if(currentCount>=targetCount) break;
+        }
+}
+//打猎
+static void hunting(tagInfo& info;int num;int animaltype){
+    
+}
 
 void UsrAI::processData()
-{
+{    tagInfo info = getInfo();
+     if (info.GameFrame % 5 != 0) return;
 
 
 
