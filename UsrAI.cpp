@@ -212,6 +212,59 @@ static void armymanage(tagInfo& info){
         }
     }
 }
+//祭司管理：转化敌人，躲避
+void priestManage(tagInfo& info){
+    int priestSN=-1;
+    double priestDR=0,priestUR=0;
+    for(tagArmy& a:info.armies){
+        if(a.sort==AT_PRIEST&&a.Blood>0){
+            priestSN=a.SN;
+            priestDR=a.DR;
+            priestUR=a.UR;
+            break;
+        }
+    }
+    if(priestSN==-1) return;
+    bool enemyDetected=false;
+    double enemyDR=0,eneemyUR=0;
+    int enemySN=-1;
+    for(tagArmy& e:info.enemy_armies){
+        double d=calDistance(priestDR,priestUR,e.DR,e.UR);
+        if(d<15*BLOCKSIDELENGTH){
+            enemyDetected=true;
+            enemyDR=e.DR;
+            enemyUR=e.UR;
+            enemySN=e.SN;
+        }
+    }
+    if (enemyDetected) {
+        double towerDR = -1, towerUR = -1;
+        double minTowerDist = 1e9;
+        for (tagBuilding& b : info.buildings) {
+            if (b.Type == BUILDING_ARROWTOWER && b.Percent == 100) {
+                double bDR = blockToDetail(b.BlockDR);
+                double bUR = blockToDetail(b.BlockUR);
+                double d = calDistance(priestDR, priestUR, bDR, bUR);
+                if (d < minTowerDist) {
+                    minTowerDist = d;
+                    towerDR = bDR;
+                    towerUR = bUR;
+                }
+            }
+        }
+        if (towerDR != -1) {
+            double targetDR = towerDR - 1 * BLOCKSIDELENGTH;
+            double targetUR = towerUR - 1 * BLOCKSIDELENGTH;
+            if (minTowerDist > 3 * BLOCKSIDELENGTH) {
+                HumanMove(priestSN, targetDR, targetUR);
+            } else {
+                if (convertCooldown == 0 && enemySN != -1) {
+                    HumanAction(priestSN, enemySN);
+                }
+            }
+        }
+    }
+}
 
 
 void UsrAI::processData()
