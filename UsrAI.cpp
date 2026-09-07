@@ -263,6 +263,77 @@ void priestManage(tagInfo& info){
                 }
             }
         }
+        return;
+    }
+    if(stage==stageExplore){
+        priestFindway(info,priestSN,priestDR,priestUR);
+    }
+}
+//祭司探路
+void priestFindway(tagInfo& info,int priestSN,double priestDR,double priestUR){
+    int centerDR = -1, centerUR = -1;
+    for (tagBuilding& b : info.buildings) {
+        if (b.Type == BUILDING_CENTER) {
+            centerDR = b.BlockDR;
+            centerUR = b.BlockUR;
+            break;
+        }
+    }
+    if (centerDR == -1) return;
+    if (lastDR != -1 && lastUR != -1) {
+        double moved = calDistance(lastDR, lastUR, priestDR, priestUR);
+        if (moved < 0.3 * BLOCKSIDELENGTH) {
+            stuckFrames++;
+        } else {
+            stuckFrames = 0;
+        }
+    }
+    lastDR = priestDR;
+    lastUR = priestUR;//检测是否卡住
+    bool reached = false;
+    if (targetDR != -1 && targetUR != -1) {
+        double d = calDistance(priestDR, priestUR, targetDR, targetUR);
+        if (d < 2 * BLOCKSIDELENGTH) reached = true;
+    }
+    if (stuckFrames > 5 || reached) {
+        step = (step + 1) % 4;
+        targetDR = -1;
+        targetUR = -1;
+        stuckFrames = 0;
+    }
+    if (targetDR == -1 && targetUR == -1) {
+        int dist = 25;
+        switch (step) {
+            case 0:
+                targetDR = blockToDetail(max(0, centerDR - dist));
+                targetUR = blockToDetail(centerUR);
+                break;
+            case 1:
+                targetDR = blockToDetail(min(MAP_SIZE - 1, centerDR + dist));
+                targetUR = blockToDetail(centerUR);
+                break;
+            case 2:
+                targetDR = blockToDetail(centerDR);
+                targetUR = blockToDetail(max(0, centerUR - dist));
+                break;
+            case 3:
+                targetDR = blockToDetail(centerDR);
+                targetUR = blockToDetail(min(MAP_SIZE - 1, centerUR + dist));
+                break;
+        }
+        int bDR = (int)(targetDR / BLOCKSIDELENGTH);
+        int bUR = (int)(targetUR / BLOCKSIDELENGTH);
+        if (bDR >= 0 && bDR < MAP_SIZE && bUR >= 0 && bUR < MAP_SIZE) {
+            if (g_terrainCache[bDR][bUR] != 0) {
+                step = (step + 1) % 4;
+                targetDR = -1;
+                targetUR = -1;
+                return;
+            }
+        }
+    }
+    if (targetDR != -1 && targetUR != -1) {
+        HumanMove(priestSN, targetDR, targetUR);
     }
 }
 
