@@ -324,7 +324,7 @@ void priestFindway(tagInfo& info,int priestSN,double priestDR,double priestUR){
         int bDR = (int)(targetDR / BLOCKSIDELENGTH);
         int bUR = (int)(targetUR / BLOCKSIDELENGTH);
         if (bDR >= 0 && bDR < MAP_SIZE && bUR >= 0 && bUR < MAP_SIZE) {
-            if (g_terrainCache[bDR][bUR] != 0) {
+            if (terrainCache[bDR][bUR] != 0) {
                 step = (step + 1) % 4;
                 targetDR = -1;
                 targetUR = -1;
